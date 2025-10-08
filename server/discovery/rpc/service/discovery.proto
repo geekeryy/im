@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package discovery;
+option go_package = "./;service";
+
+service Discovery {
+    // 服务注册
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    // 服务注销
+    rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+    // 获取服务IP列表 - 客户端负载均衡
+    rpc GetService(GetServiceRequest) returns (GetServiceResponse);
+    // 获取服务的一个IP - 服务端负载均衡
+    rpc GetServiceIP(GetServiceIPRequest) returns (GetServiceIPResponse);
+    // 是否就绪 用于服务启动时检查
+    rpc Ready(ReadyRequest) returns (ReadyResponse);
+}
+
+message RegisterRequest {
+    string service_name = 1;  // 服务名称
+    string service_address = 2; // 服务地址
+    string service_port = 3; // 服务端口
+}
+
+message RegisterResponse {}
+
+message DeregisterRequest {
+    string service_name = 1; // 服务名称
+    string service_address = 2; // 服务地址
+    string service_port = 3; // 服务端口
+}
+
+message DeregisterResponse {}
+
+message GetServiceRequest {
+    string service_name = 1; // 服务名称
+}
+
+message GetServiceResponse {
+    repeated ServiceInfo service_info = 1; // 服务列表
+}
+
+message GetServiceIPRequest {
+    string service_name = 1; // 服务名称
+    string client_key = 2; // 客户端唯一标识，用于负载均衡
+}
+
+message GetServiceIPResponse {
+    string service_address = 1; // 服务地址
+    string service_port = 2; // 服务端口
+}
+
+message ReadyRequest {}
+
+message ReadyResponse {
+    bool ready = 1;
+}
+
+message ServiceInfo {
+    string service_address = 1; // 服务地址
+    string service_port = 2; // 服务端口
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package imgateway;
+option go_package = "./;service";
+
+service IMGateway {
+    rpc DelConn(DelConnRequest) returns (DelConnResponse);
+}
+
+message DelConnRequest {
+    string conn_id = 1; // 连接ID
+}
+
+message DelConnResponse {}
+
+
