@@ -1,0 +1,27 @@
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - ineffassign
+    - unconvert
+    - goconst
+    - testpackage
+    - staticcheck
+
+  disable:
+    - errcheck
+    - unused
+
+  settings:
+    staticcheck:
+      checks:
+        - "all"
+        - "-SA1029"
+        - "-ST1000"
+        - "-ST1003"
+        - "-S1000"
+        - "-QF1003"
+        - "-SA5008"
+        - "-ST1020"
+        - "-S1006"
