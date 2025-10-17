@@ -1,2 +1,5 @@
 .vscode
 .env
+client/IM.app
+client/tmp
+.DS_Store

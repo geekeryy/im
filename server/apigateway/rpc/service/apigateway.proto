@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package apigateway;
+option go_package = "./;service";
+
+service APIGateway {
+    rpc SessionList(SessionListRequest) returns (SessionListResponse);
+    rpc HistoryMessage(HistoryMessageRequest) returns (HistoryMessageResponse);
+}
+
+message HistoryMessageRequest {
+    string session_id = 1; // 会话ID
+    int64 start_timestamp = 2; // 开始时间戳
+    int64 end_timestamp = 3; // 结束时间戳
+}
+
+message HistoryMessageResponse {
+    repeated Message messages = 1; // 消息列表
+}
+
+message Message{
+    string message_id = 1; // 消息ID
+    string session_id = 2; // 会话ID
+    int64 seq_id = 3; // 序列号ID
+    string message_type = 4; // 消息类型
+    string content = 5;     // 消息内容
+    string sender_user_id = 6; // 消息发送者ID
+    int64 timestamp = 7; // 消息时间戳
+}
+
+message SessionListRequest {
+    string user_id = 1; // 用户ID
+}
+message SessionListResponse {
+    repeated Session sessions = 1; // 会话列表
+}
+message Session {
+    string session_id = 1; // 会话ID
+    string user_id = 2; // 用户ID
+    string user_name = 3; // 用户名
+    string user_avatar = 4; // 用户头像
+    string last_message = 5; // 最后一条消息
+    int64 last_timestamp = 6; // 最后一条消息时间戳
+    int64 unread_count = 7; // 未读消息数
+}
+

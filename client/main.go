@@ -2,16 +2,57 @@ package main
 
 import (
 	"fmt"
+	"im/client/common"
+	"im/client/page"
 	"im/pkg/plato"
+	"image/color"
 	"io"
 	"log"
 	"net"
 	"time"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/theme"
 	"google.golang.org/protobuf/proto"
 )
 
 func main() {
+	a := app.New()
+	// 应用自定义主题以隐藏滚动条
+	a.Settings().SetTheme(&customTheme{Theme: theme.DefaultTheme()})
+
+	ctx := &common.Context{
+		App:       a,
+		LoginPage: nil,
+		HomePage:  nil,
+		Account:   "",
+		Password:  "",
+	}
+	ctx.LoginPage = page.LoginPage(ctx)
+	ctx.HomePage = page.HomePage(ctx)
+
+	ctx.LoginPage.Show()
+	a.Run()
+
+}
+
+// customTheme 自定义主题，用于隐藏滚动条
+type customTheme struct {
+	fyne.Theme
+}
+
+// Color 重写颜色方法，将滚动条设置为透明
+func (ct *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	// 隐藏滚动条：将滚动条背景和前景色设为透明
+	if name == theme.ColorNameScrollBar {
+		return color.Transparent
+	}
+	// 其他颜色使用默认主题
+	return theme.DefaultTheme().Color(name, variant)
+}
+
+func commandLine() {
 	conn, err := net.Dial("tcp", "localhost:8086")
 	if err != nil {
 		log.Fatalf("failed to dial: %v", err)

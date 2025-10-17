@@ -11,6 +11,7 @@ import (
 type Config struct {
 	DiscoveryConfig *DiscoveryConfig `env:"IM_DISCOVERY"`
 	IMGatewayConfig *IMGatewayConfig `env:"IM_GATEWAY"`
+	APIGatewayConfig *APIGatewayConfig `env:"IM_API"`
 }
 
 type IMGatewayConfig struct {
@@ -25,6 +26,19 @@ type DiscoveryConfig struct {
 	Mode        string      `env:"MODE" default:"dev"`
 	Addr        string      `env:"ADDR" default:":8085"`
 	RedisConfig RedisConfig `env:"REDIS"`
+}
+
+type APIGatewayConfig struct {
+	Mode        string      `env:"MODE" default:"dev"`
+	Addr        string      `env:"ADDR" default:":8088"`
+	RedisConfig RedisConfig `env:"REDIS"`
+	MysqlConfig MysqlConfig `env:"MYSQL"`
+}
+type MysqlConfig struct {
+	Addr     string `env:"ADDR" default:"127.0.0.1:3306"`
+	Username string `env:"USERNAME" default:"root"`
+	Password string `env:"PASSWORD" default:"123456"`
+	DB       string `env:"DB" default:"im"`
 }
 
 type RedisConfig struct {
@@ -44,6 +58,9 @@ func (conf *Config) GetDiscoveryConfig() *DiscoveryConfig {
 }
 func (conf *Config) GetIMGatewayConfig() *IMGatewayConfig {
 	return conf.IMGatewayConfig
+}
+func (conf *Config) GetAPIGatewayConfig() *APIGatewayConfig {
+	return conf.APIGatewayConfig
 }
 
 func Unmarshal(conf any) {

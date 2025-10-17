@@ -1,6 +1,7 @@
 package main
 
 import (
+	"im/server/apigateway"
 	"im/server/discovery"
 	"im/server/imgateway"
 	"os"
@@ -19,6 +20,7 @@ var rootCmd = &cobra.Command{
 func main() {
 	rootCmd.AddCommand(discoveryCmd)
 	rootCmd.AddCommand(imGatewayCmd)
+	rootCmd.AddCommand(apiGatewayCmd)
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -43,5 +45,16 @@ var imGatewayCmd = &cobra.Command{
 			os.Setenv("IM_GATEWAY_ADDR", args[0])
 		}
 		imgateway.Run()
+	},
+}
+
+var apiGatewayCmd = &cobra.Command{
+	Use:   "apigateway",
+	Short: "start api gateway server with args[0]",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 {
+			os.Setenv("IM_API_ADDR", args[0])
+		}
+		apigateway.Run()
 	},
 }
