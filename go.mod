@@ -4,21 +4,23 @@ go 1.25.0
 
 require (
 	fyne.io/fyne/v2 v2.6.3
+	github.com/MicahParks/keyfunc/v3 v3.7.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/spf13/cobra v1.10.1
 	github.com/zeromicro/go-zero v1.9.2
+	golang.org/x/crypto v0.40.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
-	gorm.io/driver/mysql v1.6.0
-	gorm.io/gorm v1.31.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	fyne.io/systray v1.11.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/MicahParks/jwkset v0.11.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -44,8 +46,6 @@ require (
 	github.com/hack-pad/safejs v0.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect
-	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -84,6 +84,7 @@ require (
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

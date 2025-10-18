@@ -6,7 +6,10 @@ option go_package = "./;service";
 service APIGateway {
     rpc SessionList(SessionListRequest) returns (SessionListResponse);
     rpc HistoryMessage(HistoryMessageRequest) returns (HistoryMessageResponse);
+    rpc Login(LoginRequest) returns (LoginResponse);
+    rpc Register(RegisterRequest) returns (RegisterResponse);
 }
+
 
 message HistoryMessageRequest {
     string session_uuid = 1; // 会话UUID
@@ -44,3 +47,23 @@ message Session {
     int64 unread_count = 6; // 未读消息数
 }
 
+
+message LoginRequest {
+    string identifier = 1; // 标识符 账号/手机号/邮箱
+    string credential = 2; // 凭证 密码/验证码/access_token
+    int64 identity_type = 3; // 身份类型 1: 手机号 2: 邮箱 3: 用户名 4: wechat 5: google 6: facebook 7: github
+}
+message LoginResponse {
+    string token = 1; // 令牌
+    string refresh_token = 2; // 刷新令牌
+}
+
+message RegisterRequest {
+    string identifier = 1; // 标识符 账号/手机号/邮箱
+    string credential = 2; // 凭证 密码/验证码/access_token
+    int64 identity_type = 3; // 身份类型 1: 手机号 2: 邮箱 3: 用户名 4: wechat 5: google 6: facebook 7: github
+}
+message RegisterResponse {
+    string token = 1; // 令牌
+    string refresh_token = 2; // 刷新令牌
+}

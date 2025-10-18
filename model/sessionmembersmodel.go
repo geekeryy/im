@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"errors"
@@ -42,6 +43,9 @@ func (m *customSessionMembersModel) FindSessionsByUserUuid(ctx context.Context, 
 	query := fmt.Sprintf("SELECT session_uuid FROM %s WHERE user_uuid = ?", m.table)
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, userUuid)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, errors.Join(err, fmt.Errorf("find sessions by user uuid %s failed", userUuid))
 	}
 	return resp, nil

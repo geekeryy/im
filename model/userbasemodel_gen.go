@@ -41,7 +41,6 @@ type (
 		Uuid      string    `db:"uuid"`
 		Name      string    `db:"name"`
 		Avatar    string    `db:"avatar"`
-		Password  string    `db:"password"`
 		Status    int64     `db:"status"`
 		CreatedAt time.Time `db:"created_at"`
 		UpdatedAt time.Time `db:"updated_at"`
@@ -76,14 +75,14 @@ func (m *defaultUserBaseModel) FindOne(ctx context.Context, id int64) (*UserBase
 }
 
 func (m *defaultUserBaseModel) Insert(ctx context.Context, data *UserBase) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?)", m.table, userBaseRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Uuid, data.Name, data.Avatar, data.Password, data.Status)
+	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?)", m.table, userBaseRowsExpectAutoSet)
+	ret, err := m.conn.ExecCtx(ctx, query, data.Uuid, data.Name, data.Avatar, data.Status)
 	return ret, err
 }
 
 func (m *defaultUserBaseModel) Update(ctx context.Context, data *UserBase) error {
 	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, userBaseRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, data.Uuid, data.Name, data.Avatar, data.Password, data.Status, data.Id)
+	_, err := m.conn.ExecCtx(ctx, query, data.Uuid, data.Name, data.Avatar, data.Status, data.Id)
 	return err
 }
 

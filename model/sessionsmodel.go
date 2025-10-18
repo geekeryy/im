@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -41,6 +42,9 @@ func (m *customSessionsModel) FindByUuid(ctx context.Context, uuid string) (*Ses
 	var resp Sessions
 	err := m.conn.QueryRowCtx(ctx, &resp, query, uuid)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, errors.Join(err, fmt.Errorf("find session by uuid %s failed", uuid))
 	}
 	return &resp, nil

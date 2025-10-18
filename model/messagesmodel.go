@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -42,6 +43,9 @@ func (m *customMessagesModel) FindLatestMessageBySessionUuid(ctx context.Context
 	var resp Messages
 	err := m.conn.QueryRowCtx(ctx, &resp, query, sessionUuid)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, errors.Join(err, fmt.Errorf("find latest message by session uuid %s failed", sessionUuid))
 	}
 	return &resp, nil
@@ -53,6 +57,9 @@ func (m *customMessagesModel) FindMessagesBySeqidGreaterThan(ctx context.Context
 	var resp []*Messages
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, sessionUuid, startSeqid)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, errors.Join(err, fmt.Errorf("find messages by seqid %d failed", startSeqid))
 	}
 	return resp, nil
