@@ -37,13 +37,13 @@ type APIGatewayConfig struct {
 type MysqlConfig struct {
 	Addr     string `env:"ADDR" default:"127.0.0.1:3306"`
 	Username string `env:"USERNAME" default:"root"`
-	Password string `env:"PASSWORD" default:"123456"`
+	Password string `env:"PASSWORD" default:"root"`
 	DB       string `env:"DB" default:"im"`
 }
 
 type RedisConfig struct {
-	Addr     string `env:"ADDR" default:":6379"`
-	Password string `env:"PASSWORD" default:""`
+	Addr     string `env:"ADDR" default:"127.0.0.1:6379"`
+	Password string `env:"PASSWORD" default:"root"`
 	DB       int    `env:"DB" default:"0"`
 }
 

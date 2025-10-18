@@ -9,9 +9,8 @@ service APIGateway {
 }
 
 message HistoryMessageRequest {
-    string session_id = 1; // 会话ID
-    int64 start_timestamp = 2; // 开始时间戳
-    int64 end_timestamp = 3; // 结束时间戳
+    string session_uuid = 1; // 会话UUID
+    int64 start_seqid = 2; // 开始序列号
 }
 
 message HistoryMessageResponse {
@@ -19,28 +18,29 @@ message HistoryMessageResponse {
 }
 
 message Message{
-    string message_id = 1; // 消息ID
-    string session_id = 2; // 会话ID
-    int64 seq_id = 3; // 序列号ID
+    string message_uuid = 1; // 消息UUID
+    string session_uuid = 2; // 会话UUID
+    int64 seq_id = 3; // 消息序列号ID
     string message_type = 4; // 消息类型
     string content = 5;     // 消息内容
-    string sender_user_id = 6; // 消息发送者ID
-    int64 timestamp = 7; // 消息时间戳
+    string sender_uuid = 6; // 消息发送者UUID
+    string sender_name = 7; // 消息发送者名称
+    string sender_avatar = 8; // 消息发送者头像
+    string send_time = 9; // 消息时间
 }
 
 message SessionListRequest {
-    string user_id = 1; // 用户ID
+    string user_uuid = 1; // 用户UUID
 }
 message SessionListResponse {
     repeated Session sessions = 1; // 会话列表
 }
 message Session {
-    string session_id = 1; // 会话ID
-    string user_id = 2; // 用户ID
-    string user_name = 3; // 用户名
-    string user_avatar = 4; // 用户头像
-    string last_message = 5; // 最后一条消息
-    int64 last_timestamp = 6; // 最后一条消息时间戳
-    int64 unread_count = 7; // 未读消息数
+    string uuid = 1; // 会话UUID
+    string name = 2; // 会话名称
+    string avatar = 3; // 会话头像
+    string last_message = 4; // 最后一条消息
+    string last_time = 5; // 最后一条消息时间
+    int64 unread_count = 6; // 未读消息数
 }
 
