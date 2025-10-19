@@ -2,6 +2,8 @@ package page
 
 import (
 	"im/client/common"
+	"im/model"
+	"im/server/apigateway/rpc/service"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -15,11 +17,11 @@ import (
 
 func LoginPage(ctx *common.Context) fyne.Window {
 	w := ctx.App.NewWindow("欢迎登录")
-	w.Resize(fyne.NewSize(450, 550))
+	w.Resize(fyne.NewSize(280, 370))
 	w.CenterOnScreen()
 
 	// 创建标题
-	title := canvas.NewText("即时通讯", theme.Color(theme.ColorNameForeground))
+	title := canvas.NewText("Linker", theme.Color(theme.ColorNameForeground))
 	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
@@ -28,13 +30,14 @@ func LoginPage(ctx *common.Context) fyne.Window {
 	subtitle.TextSize = 14
 	subtitle.Alignment = fyne.TextAlignCenter
 
-
 	// 创建输入框
 	accountEntry := widget.NewEntry()
-	accountEntry.SetPlaceHolder("请输入账号（任意用户名均可）")
+	accountEntry.SetPlaceHolder("请输入账号")
+	accountEntry.SetText("test")
 
 	passwordEntry := widget.NewPasswordEntry()
-	passwordEntry.SetPlaceHolder("请输入密码（123456）")
+	passwordEntry.SetPlaceHolder("请输入密码")
+	passwordEntry.SetText("123123")
 
 	// 错误提示标签
 	errorLabel := widget.NewLabel("")
@@ -80,19 +83,117 @@ func LoginPage(ctx *common.Context) fyne.Window {
 			return
 		}
 
-		// TODO: 实际的登录验证逻辑
-		ctx.Account = account
-		ctx.Password = password
+		response, err := ctx.ApiGatewayClient.Login(ctx.Ctx, &service.LoginRequest{
+			Identifier:   account,
+			Credential:   password,
+			IdentityType: model.IdentityTypePassword,
+		})
+		if err != nil {
+			errorLabel.SetText("❌ 登录失败: " + err.Error())
+			errorLabel.Show()
+			return
+		}
+		if response.Token == "" {
+			errorLabel.SetText("❌ 登录失败: 用户不存在")
+			errorLabel.Show()
+			return
+		}
+		ctx.Token = response.Token
+		ctx.RefreshToken = response.RefreshToken
+
+		responseUser, err := ctx.ApiGatewayClient.GetUserInfo(ctx.Ctx, &service.GetUserInfoRequest{})
+		if err != nil {
+			errorLabel.SetText("❌ 获取用户信息失败: " + err.Error())
+			errorLabel.Show()
+			return
+		}
+
+		ctx.User = &common.User{
+			UUID:   responseUser.Uuid,
+			Name:   responseUser.Name,
+			Avatar: responseUser.Avatar,
+			Email:  responseUser.Email,
+			Phone:  responseUser.Mobile,
+		}
 
 		// 登录成功
 		ctx.LoginPage.Close()
+		common.CreateConn(ctx, ctx.Token)
+		ctx.HomePage = HomePage(ctx)
 		ctx.HomePage.Show()
 	})
 	loginButton.Importance = widget.HighImportance
 
 	// 注册按钮
 	registerButton := widget.NewButton("注 册", func() {
-		dialog.ShowInformation("提示", "注册功能开发中...", w)
+		// 清除之前的错误提示
+		errorLabel.Hide()
+
+		// 验证输入
+		account := strings.TrimSpace(accountEntry.Text)
+		password := strings.TrimSpace(passwordEntry.Text)
+
+		if account == "" {
+			errorLabel.SetText("❌ 请输入账号")
+			errorLabel.Show()
+			return
+		}
+
+		if password == "" {
+			errorLabel.SetText("❌ 请输入密码")
+			errorLabel.Show()
+			return
+		}
+
+		if len(account) < 3 {
+			errorLabel.SetText("❌ 账号长度至少3个字符")
+			errorLabel.Show()
+			return
+		}
+
+		if len(password) < 6 {
+			errorLabel.SetText("❌ 密码长度至少6个字符")
+			errorLabel.Show()
+			return
+		}
+
+		response, err := ctx.ApiGatewayClient.Register(ctx.Ctx, &service.RegisterRequest{
+			Identifier:   account,
+			Credential:   password,
+			IdentityType: model.IdentityTypePassword,
+		})
+		if err != nil {
+			errorLabel.SetText("❌ 注册失败: " + err.Error())
+			errorLabel.Show()
+			return
+		}
+		if response.Token == "" {
+			errorLabel.SetText("❌ 注册失败")
+			errorLabel.Show()
+			return
+		}
+		ctx.Token = response.Token
+		ctx.RefreshToken = response.RefreshToken
+
+		responseUser, err := ctx.ApiGatewayClient.GetUserInfo(ctx.Ctx, &service.GetUserInfoRequest{})
+		if err != nil {
+			errorLabel.SetText("❌ 获取用户信息失败: " + err.Error())
+			errorLabel.Show()
+			return
+		}
+
+		ctx.User = &common.User{
+			UUID:   responseUser.Uuid,
+			Name:   responseUser.Name,
+			Avatar: responseUser.Avatar,
+			Email:  responseUser.Email,
+			Phone:  responseUser.Mobile,
+		}
+
+		ctx.LoginPage.Close()
+		common.CreateConn(ctx, ctx.Token)
+		ctx.HomePage = HomePage(ctx)
+		ctx.HomePage.Show()
 	})
 
 	// 忘记密码链接

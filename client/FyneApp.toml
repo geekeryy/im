@@ -1,7 +1,7 @@
 Website = "https://example.com"
 
 [Details]
-  Icon = "assets/icon.jpg"
+  Icon = "assets/Icon.png"
   Name = "IM"
   ID = "com.example.app"
   Version = "1.0.0"

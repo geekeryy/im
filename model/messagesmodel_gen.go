@@ -42,7 +42,7 @@ type (
 		SessionUuid string    `db:"session_uuid"`
 		SenderUuid  string    `db:"sender_uuid"`
 		SeqId       int64     `db:"seq_id"`
-		MessageType string    `db:"message_type"`
+		MessageType int64     `db:"message_type"`
 		Status      int64     `db:"status"`
 		Content     string    `db:"content"`
 		CreatedAt   time.Time `db:"created_at"`

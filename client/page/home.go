@@ -1,7 +1,9 @@
 package page
 
 import (
+	"fmt"
 	"im/client/common"
+	apigatewayService "im/server/apigateway/rpc/service"
 	"image/color"
 	"strings"
 
@@ -12,22 +14,6 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
-
-type ChatMessage struct {
-	Content   string
-	IsSent    bool   // true 表示发送的消息，false 表示接收的消息
-	AvatarURI string // 头像资源路径，支持本地文件或后续的远程 URL
-}
-
-// Session 会话数据结构
-type Session struct {
-	ID            string // 会话ID
-	Name          string // 联系人名称
-	AvatarURI     string // 头像路径
-	LastMessage   string // 最后一条消息
-	UnreadCount   int    // 未读消息数
-	LastTimestamp string // 最后消息时间
-}
 
 // CustomEntry 自定义输入框，支持 Enter 发送，Cmd+Enter 换行
 type CustomEntry struct {
@@ -158,7 +144,7 @@ func (c *compactVBoxLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) 
 }
 
 // createSessionItem 创建仿微信风格的会话列表项（精致小巧版）
-func (homeCtx *HomePageContext) createSessionItem(session Session) fyne.CanvasObject {
+func (homeCtx *HomePageContext) createSessionItem(session common.Session) fyne.CanvasObject {
 	// 创建头像（40x40）
 	avatar := canvas.NewImageFromFile(session.AvatarURI)
 	avatar.FillMode = canvas.ImageFillContain
@@ -191,7 +177,7 @@ func (homeCtx *HomePageContext) createSessionItem(session Session) fyne.CanvasOb
 	lastMsgLabel.TextSize = 12
 
 	// 创建时间标签
-	timeLabel := widget.NewLabel(session.LastTimestamp)
+	timeLabel := widget.NewLabel(session.LastTime)
 	timeLabel.Alignment = fyne.TextAlignTrailing
 
 	// 顶部行：用户名和时间
@@ -225,27 +211,64 @@ func (homeCtx *HomePageContext) createSessionItem(session Session) fyne.CanvasOb
 		itemContent,
 		separator,
 	), func() {
+
 		homeCtx.MessageBox.RemoveAll()
 		homeCtx.UsernName.Text = session.Name
+		homeCtx.CurrentSessionUUID = session.UUID
 		homeCtx.UsernName.Refresh()
-		if messages, ok := AllMessages[session.ID]; ok {
 
-			for _, msg := range messages {
-				if msg.IsSent {
-					homeCtx.MessageBox.Add(createSentMessage(msg))
+		fyne.Do(func() {
+			response, err := homeCtx.AppCtx.ApiGatewayClient.HistoryMessage(homeCtx.AppCtx.Ctx, &apigatewayService.HistoryMessageRequest{
+				SessionUuid: session.UUID,
+				StartSeqid:  0,
+			})
+			if err != nil {
+				homeCtx.AppCtx.Logger.Error("Failed to get history message", "error", err)
+				return
+			}
+			for _, msg := range response.Messages {
+				homeCtx.AppCtx.Logger.Debug("message", "message", msg, "user_uuid", homeCtx.AppCtx.User.UUID)
+				if msg.SenderUuid == homeCtx.AppCtx.User.UUID {
+					homeCtx.MessageBox.Add(createSentMessage(common.ChatMessage{
+						Content:   msg.Content,
+						IsSent:    true,
+						AvatarURI: fmt.Sprintf("assets/%s", msg.SenderAvatar),
+					}))
 				} else {
-					homeCtx.MessageBox.Add(createReceivedMessage(msg))
+					homeCtx.MessageBox.Add(createReceivedMessage(common.ChatMessage{
+						Content:   msg.Content,
+						IsSent:    false,
+						AvatarURI: fmt.Sprintf("assets/%s", msg.SenderAvatar),
+					}))
 				}
 			}
-		}
-		homeCtx.MessageBox.Refresh()
+			homeCtx.MessageBox.Refresh()
+
+			sessionUserList, err := homeCtx.AppCtx.ApiGatewayClient.GetSessionUserList(homeCtx.AppCtx.Ctx, &apigatewayService.GetSessionUserListRequest{
+				SessionUuid: session.UUID,
+			})
+			if err != nil {
+				homeCtx.AppCtx.Logger.Error("Failed to get session user list", "error", err)
+				return
+			}
+			users := make(map[string]common.User, 0)
+			for _, user := range sessionUserList.Users {
+				users[user.UserUuid] = common.User{
+					UUID:   user.UserUuid,
+					Name:   user.UserName,
+					Avatar: fmt.Sprintf("assets/%s", user.UserAvatar),
+				}
+			}
+			homeCtx.AppCtx.SessionUserTable[session.UUID] = users
+		})
+
 	})
 
 	return sessionItem
 }
 
 // createReceivedMessage 创建接收到的消息组件（左侧布局）
-func createReceivedMessage(msg ChatMessage) fyne.CanvasObject {
+func createReceivedMessage(msg common.ChatMessage) fyne.CanvasObject {
 	// 创建头像
 	avatar := canvas.NewImageFromFile(msg.AvatarURI)
 	avatar.FillMode = canvas.ImageFillContain
@@ -281,7 +304,7 @@ func createReceivedMessage(msg ChatMessage) fyne.CanvasObject {
 }
 
 // createSentMessage 创建发送的消息组件（右侧布局，仿照微信）
-func createSentMessage(msg ChatMessage) fyne.CanvasObject {
+func createSentMessage(msg common.ChatMessage) fyne.CanvasObject {
 	// 创建头像
 	avatar := canvas.NewImageFromFile(msg.AvatarURI)
 	avatar.FillMode = canvas.ImageFillContain
@@ -317,69 +340,71 @@ func createSentMessage(msg ChatMessage) fyne.CanvasObject {
 	return container.NewPadded(msgRow)
 }
 
-var AllMessages = map[string][]ChatMessage{
-	"1": {
-		{Content: "你好！", IsSent: false, AvatarURI: "assets/img.png"},
-		{Content: "嗨，有什么可以帮你的吗？", IsSent: true, AvatarURI: "assets/img.png"},
-		{Content: "我在开发一个聊天应用，想实现类似微信的界面效果。你能帮我吗？", IsSent: false, AvatarURI: "assets/img.png"},
-		{Content: "当然可以！我可以帮你实现消息气泡、头像显示、键盘快捷键等功能。", IsSent: true, AvatarURI: "assets/img.png"},
-		{Content: "太好了！", IsSent: false, AvatarURI: "assets/img.png"},
-	},
-	"2": {
-		{Content: "你好！", IsSent: false, AvatarURI: "assets/img.png"},
-	},
-}
-
 type HomePageContext struct {
-	AppCtx     *common.Context
-	Messages   []ChatMessage
-	Session    Session
-	MessageBox *fyne.Container
-	UsernName  *widget.Label
+	AppCtx             *common.Context
+	Messages           []common.ChatMessage
+	MessageBox         *fyne.Container
+	UsernName          *widget.Label
+	CurrentSessionUUID string // 当前会话UUID
+
 }
 
 func HomePage(ctx *common.Context) fyne.Window {
-	homeCtx := &HomePageContext{}
+	homeCtx := &HomePageContext{
+		AppCtx: ctx,
+	}
 	w := ctx.App.NewWindow("Home")
 	w.Resize(fyne.Size{Width: 900, Height: 550})
 
 	// 聊天消息列表
-	messages := []ChatMessage{
-		{Content: "你好！", IsSent: false, AvatarURI: "assets/img.png"},
-		{Content: "嗨，有什么可以帮你的吗？", IsSent: true, AvatarURI: "assets/img.png"},
-		{Content: "我在开发一个聊天应用，想实现类似微信的界面效果。你能帮我吗？", IsSent: false, AvatarURI: "assets/img.png"},
-		{Content: "当然可以！我可以帮你实现消息气泡、头像显示、键盘快捷键等功能。", IsSent: true, AvatarURI: "assets/img.png"},
-		{Content: "太好了！", IsSent: false, AvatarURI: "assets/img.png"},
-	}
+	messages := []common.ChatMessage{}
 
-	// 创建会话数据（模拟数据）
-	sessions := []Session{
-		{ID: "1", Name: "马斯克", AvatarURI: "assets/img.png", LastMessage: "太好了！", UnreadCount: 5, LastTimestamp: "10:30"},
-		{ID: "2", Name: "比尔盖茨", AvatarURI: "assets/img.png", LastMessage: "最近在忙什么呢？", UnreadCount: 2, LastTimestamp: "09:15"},
-		{ID: "3", Name: "乔布斯", AvatarURI: "assets/img.png", LastMessage: "设计要简洁", UnreadCount: 0, LastTimestamp: "昨天"},
-		{ID: "4", Name: "扎克伯格", AvatarURI: "assets/img.png", LastMessage: "元宇宙项目进展如何？", UnreadCount: 15, LastTimestamp: "08:45"},
-		{ID: "5", Name: "雷军", AvatarURI: "assets/img.png", LastMessage: "Are you OK?", UnreadCount: 0, LastTimestamp: "周一"},
-		{ID: "6", Name: "马云", AvatarURI: "assets/img.png", LastMessage: "让天下没有难做的生意", UnreadCount: 0, LastTimestamp: "周日"},
-		{ID: "7", Name: "李彦宏", AvatarURI: "assets/img.png", LastMessage: "搜索引擎优化讨论", UnreadCount: 1, LastTimestamp: "12/20"},
-		{ID: "8", Name: "张一鸣", AvatarURI: "assets/img.png", LastMessage: "算法推荐很重要", UnreadCount: 0, LastTimestamp: "12/19"},
-		{ID: "9", Name: "库克", AvatarURI: "assets/img.png", LastMessage: "iPhone新品发布", UnreadCount: 0, LastTimestamp: "12/18"},
-		{ID: "10", Name: "任正非", AvatarURI: "assets/img.png", LastMessage: "华为鸿蒙系统", UnreadCount: 0, LastTimestamp: "12/17"},
-	}
+	// 使用VBox创建会话列表（更灵活）
+	sessionBox := container.NewVBox()
+
 	// 创建消息容器（VBox）
 	messageBox := container.NewVBox()
 	homeCtx.MessageBox = messageBox
 
 	// 顶部用户名
-	usernName := widget.NewLabel("马斯克")
+	usernName := widget.NewLabel(ctx.User.Name)
 	homeCtx.UsernName = usernName
 
-	// 使用VBox创建会话列表（更灵活）
-	sessionBox := container.NewVBox()
+	go func() {
+		// for range time.NewTicker(5 * time.Second).C {
+		fyne.Do(func() {
+			sessionBox.RemoveAll()
+			response, err := ctx.ApiGatewayClient.SessionList(ctx.Ctx, &apigatewayService.SessionListRequest{})
+			if err != nil {
+				ctx.Logger.Error("Failed to get session list", "error", err)
+				return
+			}
+			for _, v := range response.Sessions {
+				ctx.Logger.Debug("session", "session", v)
+				session := common.Session{
+					UUID:        v.Uuid,
+					Name:        v.Name,
+					AvatarURI:   fmt.Sprintf("assets/%s", v.Avatar),
+					LastMessage: v.LastMessage,
+					UnreadCount: int(v.UnreadCount),
+					LastTime:    v.LastTime,
+				}
+				item := homeCtx.createSessionItem(session)
+				sessionBox.Add(item)
+			}
+			sessionBox.Refresh()
+		})
+		// }
+	}()
 
-	for _, session := range sessions {
-		item := homeCtx.createSessionItem(session)
-		sessionBox.Add(item)
-	}
+	go func() {
+		for msg := range homeCtx.AppCtx.MessageReadChan {
+			fyne.Do(func() {
+				messageBox.Add(createReceivedMessage(msg))
+				// messageBox.Refresh()
+			})
+		}
+	}()
 
 	// 左侧内容：会话列表滚动容器（隐藏滚动条样式）
 	sessionScroll := container.NewVScroll(sessionBox)
@@ -403,13 +428,14 @@ func HomePage(ctx *common.Context) fyne.Window {
 	sendMessage := func() {
 		if inputEntry != nil && strings.TrimSpace(inputEntry.Text) != "" {
 			// 创建新消息
-			newMsg := ChatMessage{
-				Content:   inputEntry.Text,
-				IsSent:    true,
-				AvatarURI: "assets/img.png",
+			newMsg := common.ChatMessage{
+				Content:     inputEntry.Text,
+				IsSent:      true,
+				AvatarURI:   fmt.Sprintf("assets/%s", ctx.User.Avatar),
+				SessionUuid: homeCtx.CurrentSessionUUID,
 			}
 			messages = append(messages, newMsg)
-
+			homeCtx.AppCtx.MessageWriteChan <- newMsg
 			// 添加消息到界面
 			messageBox.Add(createSentMessage(newMsg))
 

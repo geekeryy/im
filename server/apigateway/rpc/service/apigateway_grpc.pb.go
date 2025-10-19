@@ -19,10 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	APIGateway_SessionList_FullMethodName    = "/apigateway.APIGateway/SessionList"
-	APIGateway_HistoryMessage_FullMethodName = "/apigateway.APIGateway/HistoryMessage"
-	APIGateway_Login_FullMethodName          = "/apigateway.APIGateway/Login"
-	APIGateway_Register_FullMethodName       = "/apigateway.APIGateway/Register"
+	APIGateway_SessionList_FullMethodName        = "/apigateway.APIGateway/SessionList"
+	APIGateway_GetSessionUserList_FullMethodName = "/apigateway.APIGateway/GetSessionUserList"
+	APIGateway_HistoryMessage_FullMethodName     = "/apigateway.APIGateway/HistoryMessage"
+	APIGateway_Login_FullMethodName              = "/apigateway.APIGateway/Login"
+	APIGateway_Register_FullMethodName           = "/apigateway.APIGateway/Register"
+	APIGateway_SendMessage_FullMethodName        = "/apigateway.APIGateway/SendMessage"
+	APIGateway_GetUserInfo_FullMethodName        = "/apigateway.APIGateway/GetUserInfo"
 )
 
 // APIGatewayClient is the client API for APIGateway service.
@@ -30,9 +33,12 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type APIGatewayClient interface {
 	SessionList(ctx context.Context, in *SessionListRequest, opts ...grpc.CallOption) (*SessionListResponse, error)
+	GetSessionUserList(ctx context.Context, in *GetSessionUserListRequest, opts ...grpc.CallOption) (*GetSessionUserListResponse, error)
 	HistoryMessage(ctx context.Context, in *HistoryMessageRequest, opts ...grpc.CallOption) (*HistoryMessageResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error)
 }
 
 type aPIGatewayClient struct {
@@ -46,6 +52,15 @@ func NewAPIGatewayClient(cc grpc.ClientConnInterface) APIGatewayClient {
 func (c *aPIGatewayClient) SessionList(ctx context.Context, in *SessionListRequest, opts ...grpc.CallOption) (*SessionListResponse, error) {
 	out := new(SessionListResponse)
 	err := c.cc.Invoke(ctx, APIGateway_SessionList_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIGatewayClient) GetSessionUserList(ctx context.Context, in *GetSessionUserListRequest, opts ...grpc.CallOption) (*GetSessionUserListResponse, error) {
+	out := new(GetSessionUserListResponse)
+	err := c.cc.Invoke(ctx, APIGateway_GetSessionUserList_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,14 +94,35 @@ func (c *aPIGatewayClient) Register(ctx context.Context, in *RegisterRequest, op
 	return out, nil
 }
 
+func (c *aPIGatewayClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, APIGateway_SendMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIGatewayClient) GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error) {
+	out := new(GetUserInfoResponse)
+	err := c.cc.Invoke(ctx, APIGateway_GetUserInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // APIGatewayServer is the server API for APIGateway service.
 // All implementations must embed UnimplementedAPIGatewayServer
 // for forward compatibility
 type APIGatewayServer interface {
 	SessionList(context.Context, *SessionListRequest) (*SessionListResponse, error)
+	GetSessionUserList(context.Context, *GetSessionUserListRequest) (*GetSessionUserListResponse, error)
 	HistoryMessage(context.Context, *HistoryMessageRequest) (*HistoryMessageResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
+	GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error)
 	mustEmbedUnimplementedAPIGatewayServer()
 }
 
@@ -97,6 +133,9 @@ type UnimplementedAPIGatewayServer struct {
 func (UnimplementedAPIGatewayServer) SessionList(context.Context, *SessionListRequest) (*SessionListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SessionList not implemented")
 }
+func (UnimplementedAPIGatewayServer) GetSessionUserList(context.Context, *GetSessionUserListRequest) (*GetSessionUserListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSessionUserList not implemented")
+}
 func (UnimplementedAPIGatewayServer) HistoryMessage(context.Context, *HistoryMessageRequest) (*HistoryMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HistoryMessage not implemented")
 }
@@ -105,6 +144,12 @@ func (UnimplementedAPIGatewayServer) Login(context.Context, *LoginRequest) (*Log
 }
 func (UnimplementedAPIGatewayServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedAPIGatewayServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (UnimplementedAPIGatewayServer) GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserInfo not implemented")
 }
 func (UnimplementedAPIGatewayServer) mustEmbedUnimplementedAPIGatewayServer() {}
 
@@ -133,6 +178,24 @@ func _APIGateway_SessionList_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(APIGatewayServer).SessionList(ctx, req.(*SessionListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _APIGateway_GetSessionUserList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSessionUserListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIGatewayServer).GetSessionUserList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: APIGateway_GetSessionUserList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIGatewayServer).GetSessionUserList(ctx, req.(*GetSessionUserListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -191,6 +254,42 @@ func _APIGateway_Register_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _APIGateway_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIGatewayServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: APIGateway_SendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIGatewayServer).SendMessage(ctx, req.(*SendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _APIGateway_GetUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIGatewayServer).GetUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: APIGateway_GetUserInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIGatewayServer).GetUserInfo(ctx, req.(*GetUserInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // APIGateway_ServiceDesc is the grpc.ServiceDesc for APIGateway service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -203,6 +302,10 @@ var APIGateway_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _APIGateway_SessionList_Handler,
 		},
 		{
+			MethodName: "GetSessionUserList",
+			Handler:    _APIGateway_GetSessionUserList_Handler,
+		},
+		{
 			MethodName: "HistoryMessage",
 			Handler:    _APIGateway_HistoryMessage_Handler,
 		},
@@ -213,6 +316,14 @@ var APIGateway_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Register",
 			Handler:    _APIGateway_Register_Handler,
+		},
+		{
+			MethodName: "SendMessage",
+			Handler:    _APIGateway_SendMessage_Handler,
+		},
+		{
+			MethodName: "GetUserInfo",
+			Handler:    _APIGateway_GetUserInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

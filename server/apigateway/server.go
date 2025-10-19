@@ -29,7 +29,7 @@ func Run() {
 	}))
 
 	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger)),
+		grpc.ChainUnaryInterceptor(grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger), grpcmiddreware.JwtUnaryInterceptor(logger)),
 	)
 
 	service.RegisterAPIGatewayServer(server, service.NewAPIGatewayService(ctx, logger, conf))

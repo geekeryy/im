@@ -18,11 +18,23 @@ type (
 		sessionsModel
 		withSession(session sqlx.Session) SessionsModel
 		FindByUuid(ctx context.Context, uuid string) (*Sessions, error)
+		CreateSession(ctx context.Context,tx sqlx.Session, session *Sessions) error
 	}
 
 	customSessionsModel struct {
 		*defaultSessionsModel
 	}
+)
+
+const (
+	SessionTypeSingle = 1 // 单聊
+	SessionTypeGroup = 2 // 群聊
+)
+
+const (
+	SessionStatusActive = 1 // 活跃
+	SessionStatusInactive = 2 // 不活跃
+	SessionStatusDeleted = 3 // 删除
 )
 
 // NewSessionsModel returns a model for the database table.
@@ -48,4 +60,20 @@ func (m *customSessionsModel) FindByUuid(ctx context.Context, uuid string) (*Ses
 		return nil, errors.Join(err, fmt.Errorf("find session by uuid %s failed", uuid))
 	}
 	return &resp, nil
+}
+
+// 创建会话
+func (m *customSessionsModel) CreateSession(ctx context.Context,tx sqlx.Session, session *Sessions) error {
+	var conn sqlx.Session
+	if tx == nil {
+		conn = m.conn
+	} else {
+		conn = tx
+	}
+	query := fmt.Sprintf("INSERT INTO %s (uuid, name, avatar, session_type, status) VALUES (?, ?, ?, ?, ?)", m.table)
+	_, err := conn.ExecCtx(ctx, query, session.Uuid, session.Name, session.Avatar, session.SessionType, session.Status)
+	if err != nil {
+		return errors.Join(err, fmt.Errorf("create session failed"))
+	}
+	return nil
 }

@@ -26,6 +26,16 @@ type (
 	}
 )
 
+const (
+	MessageTypeText = 1 // 文本消息
+)
+
+const (
+	MessageStatusSent = 1 // 已发送
+	MessageStatusReceived = 2 // 已接收
+	MessageStatusRead = 3 // 已读
+)
+
 // NewMessagesModel returns a model for the database table.
 func NewMessagesModel(conn sqlx.SqlConn) MessagesModel {
 	return &customMessagesModel{

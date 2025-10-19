@@ -8,6 +8,7 @@ import (
 	"im/pkg/config"
 	"im/pkg/jwt"
 	"im/pkg/password"
+	"im/pkg/xcontext"
 	"log"
 	"log/slog"
 	"math/rand"
@@ -28,6 +29,7 @@ type APIGatewayService struct {
 	SessionsModel       model.SessionsModel
 	MessagesModel       model.MessagesModel
 	UserBaseModel       model.UserBaseModel
+	UserInfoModel       model.UserInfoModel
 	SessionMembersModel model.SessionMembersModel
 	UserIdentityModel   model.UserIdentityModel
 }
@@ -58,6 +60,7 @@ func NewAPIGatewayService(ctx context.Context, logger *slog.Logger, conf *config
 		MessagesModel:       model.NewMessagesModel(mysqlClient),
 		SessionMembersModel: model.NewSessionMembersModel(mysqlClient),
 		UserIdentityModel:   model.NewUserIdentityModel(mysqlClient),
+		UserInfoModel:       model.NewUserInfoModel(mysqlClient),
 	}
 }
 
@@ -65,7 +68,8 @@ func (s *APIGatewayService) SessionList(ctx context.Context, req *SessionListReq
 	sessionListResponse := &SessionListResponse{
 		Sessions: make([]*Session, 0),
 	}
-	sessionList, err := s.SessionMembersModel.FindSessionsByUserUuid(ctx, req.UserUuid)
+	userUUID := xcontext.GetUserUUID(ctx)
+	sessionList, err := s.SessionMembersModel.FindSessionsByUserUuid(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +78,47 @@ func (s *APIGatewayService) SessionList(ctx context.Context, req *SessionListReq
 		if err != nil {
 			return nil, err
 		}
+
 		latestMessage, err := s.MessagesModel.FindLatestMessageBySessionUuid(ctx, sessionUuid)
 		if err != nil {
 			return nil, err
 		}
-
-		sessionListResponse.Sessions = append(sessionListResponse.Sessions, &Session{
+		sessionItem := &Session{
 			Uuid:        session.Uuid,
 			Name:        session.Name,
 			Avatar:      session.Avatar,
-			LastMessage: latestMessage.Content,
-			LastTime:    latestMessage.CreatedAt.Format("1月2日 15:04"),
 			UnreadCount: 0,
-		})
+		}
+
+		switch session.SessionType {
+		case model.SessionTypeSingle:
+			sessionMember, err := s.SessionMembersModel.FindAllMembersBySessionUuid(ctx, sessionUuid)
+			if err != nil {
+				return nil, err
+			}
+			otherMember := ""
+			for _, member := range sessionMember {
+				if member == userUUID {
+					continue
+				}
+				otherMember = member
+			}
+			otherMemberBase, err := s.UserBaseModel.FindByUuid(ctx, otherMember)
+			if err != nil {
+				return nil, err
+			}
+			if otherMemberBase == nil {
+				return nil, fmt.Errorf("other member not found by uuid %s", otherMember)
+			}
+			sessionItem.Name = otherMemberBase.Name
+			sessionItem.Avatar = otherMemberBase.Avatar
+		}
+
+		if latestMessage != nil {
+			sessionItem.LastMessage = latestMessage.Content
+			sessionItem.LastTime = latestMessage.CreatedAt.Format("1月2日 15:04")
+		}
+		sessionListResponse.Sessions = append(sessionListResponse.Sessions, sessionItem)
 	}
 	return sessionListResponse, nil
 }
@@ -157,7 +189,7 @@ func (s *APIGatewayService) Login(ctx context.Context, req *LoginRequest) (*Logi
 	default:
 		return nil, errors.New("不支持的身份类型")
 	}
-	token, _, err := jwt.GenerateToken(userIdentity.UserUuid, 3600, nil)
+	token, _, err := jwt.GenerateToken(userIdentity.UserUuid, 3600*24*365, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +226,7 @@ func (s *APIGatewayService) Register(ctx context.Context, req *RegisterRequest) 
 
 	userUuid := uuid.New().String()
 	userName := NewRandomUserName()
+	avatar := NewRandomAvatar()
 	userIdentityNew := &model.UserIdentity{
 		UserUuid:     userUuid,
 		Identifier:   req.Identifier,
@@ -203,10 +236,10 @@ func (s *APIGatewayService) Register(ctx context.Context, req *RegisterRequest) 
 	userBase := &model.UserBase{
 		Uuid:   userUuid,
 		Name:   userName,
-		Avatar: "https://avatar.com/user.png",
+		Avatar: avatar,
 		Status: model.UserStatusActive,
 	}
-	if err:=s.MysqlClient.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+	if err := s.MysqlClient.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		if err = s.UserBaseModel.RegisterUserBase(ctx, session, userBase); err != nil {
 			return err
 		}
@@ -214,7 +247,11 @@ func (s *APIGatewayService) Register(ctx context.Context, req *RegisterRequest) 
 			return err
 		}
 		return nil
-	});err!=nil{
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := s.initSession(ctx, userUuid); err != nil {
 		return nil, err
 	}
 
@@ -232,6 +269,113 @@ func (s *APIGatewayService) Register(ctx context.Context, req *RegisterRequest) 
 	}, nil
 }
 
+// 为当前用户与所有好友建立单聊会话
+func (s *APIGatewayService) initSession(ctx context.Context, userUUID string) error {
+	userBases, err := s.UserBaseModel.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.MysqlClient.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+		for _, userBase := range userBases {
+			if userBase.Uuid == userUUID {
+				continue
+			}
+			sessionUUID := uuid.New().String()
+
+			err := s.SessionsModel.CreateSession(ctx, session, &model.Sessions{
+				Uuid:        sessionUUID,
+				Name:        "",
+				Avatar:      "",
+				SessionType: model.SessionTypeSingle,
+				Status:      model.SessionStatusActive,
+			})
+			if err != nil {
+				return err
+			}
+			err = s.SessionMembersModel.JoinSession(ctx, session, sessionUUID, userUUID)
+			if err != nil {
+				return err
+			}
+			err = s.SessionMembersModel.JoinSession(ctx, session, sessionUUID, userBase.Uuid)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIGatewayService) GetSessionUserList(ctx context.Context, req *GetSessionUserListRequest) (*GetSessionUserListResponse, error) {
+	sessionUserListResponse := &GetSessionUserListResponse{
+		Users: make([]*SessionUserListItem, 0),
+	}
+	sessionUserList, err := s.SessionMembersModel.FindAllMembersBySessionUuid(ctx, req.SessionUuid)
+	if err != nil {
+		return nil, err
+	}
+	for _, userUuid := range sessionUserList {
+		userBase, err := s.UserBaseModel.FindByUuid(ctx, userUuid)
+		if err != nil {
+			return nil, err
+		}
+		if userBase == nil {
+			continue
+		}
+		sessionUserListResponse.Users = append(sessionUserListResponse.Users, &SessionUserListItem{
+			UserUuid:   userUuid,
+			UserName:   userBase.Name,
+			UserAvatar: userBase.Avatar,
+		})
+	}
+	return sessionUserListResponse, nil
+}
+
+func (s *APIGatewayService) SendMessage(ctx context.Context, req *SendMessageRequest) (*SendMessageResponse, error) {
+	message := &model.Messages{
+		Uuid:        uuid.New().String(),
+		SessionUuid: req.SessionUuid,
+		SenderUuid:  req.SenderUuid,
+		MessageType: req.MessageType,
+		Status:      model.MessageStatusSent,
+		SeqId:       req.SeqId,
+		Content:     req.Payload,
+	}
+	if _, err := s.MessagesModel.Insert(ctx, message); err != nil {
+		return nil, err
+	}
+	return &SendMessageResponse{
+		MessageUuid: message.Uuid,
+	}, nil
+}
+
+func (s *APIGatewayService) GetUserInfo(ctx context.Context, req *GetUserInfoRequest) (*GetUserInfoResponse, error) {
+	userbase, err := s.UserBaseModel.FindByUuid(ctx, xcontext.GetUserUUID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if userbase == nil {
+		return nil, errors.New("用户不存在")
+	}
+	resp := &GetUserInfoResponse{
+		Uuid:   userbase.Uuid,
+		Name:   userbase.Name,
+		Avatar: userbase.Avatar,
+	}
+	userinfo, err := s.UserInfoModel.FindByUuid(ctx, userbase.Uuid)
+	if err != nil {
+		return nil, err
+	}
+	if userinfo != nil {
+		resp.Email = userinfo.Email
+		resp.Mobile = userinfo.Mobile
+	}
+	return resp, nil
+}
+
 // 生成随机昵称
 func NewRandomUserName() string {
 	adjectives := []string{"快乐的", "聪明的", "勇敢的", "温柔的", "活泼的", "可爱的", "优雅的", "神秘的", "阳光的", "梦幻的"}
@@ -240,6 +384,19 @@ func NewRandomUserName() string {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	adjective := adjectives[rand.Intn(len(adjectives))]
 	noun := nouns[rand.Intn(len(nouns))]
-	number := rand.Intn(999999)
-	return fmt.Sprintf("%s%s%06d", adjective, noun, number)
+	number := rand.Intn(99)
+	return fmt.Sprintf("%s%s%02d", adjective, noun, number)
+}
+
+// 生成随机头像
+func NewRandomAvatar() string {
+	avatars := []string{
+		"girl1.png",
+		"girl2.png",
+		"boy1.png",
+		"boy2.png",
+	}
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	avatar := avatars[rand.Intn(len(avatars))]
+	return avatar
 }

@@ -2,8 +2,8 @@
 create table sessions (
     id bigint auto_increment, -- 主键ID
     uuid varchar(255) not null, -- 会话UUID
-    name varchar(255) not null, -- 会话名称
-    avatar varchar(255) not null, -- 会话头像
+    name varchar(255) not null default '', -- 会话名称
+    avatar varchar(255) not null default '', -- 会话头像
     session_type int not null, -- 会话类型 1: 单聊 2: 群聊
     status int not null, -- 状态
     created_at datetime default current_timestamp not null, -- 创建时间
@@ -32,7 +32,7 @@ create table messages (
     session_uuid varchar(255) not null, -- 会话UUID
     sender_uuid varchar(255) not null, -- 发送者UUID
     seq_id bigint not null, -- 消息序列号ID
-    message_type varchar(255) not null, -- 消息类型
+    message_type int not null, -- 消息类型 1: text
     status int not null, -- 状态 1: 已发送 2: 已接收 3: 已读
     content text not null, -- 消息内容
     created_at datetime default current_timestamp not null, -- 创建时间

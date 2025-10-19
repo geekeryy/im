@@ -4,36 +4,17 @@ package plato;
 option go_package = "./;plato";
 
 message MessageUpLink {
-    string session_id = 1; // 会话ID
-    string from_user_id = 2; // 发送者ID
-    string payload = 3; // 消息
-    int64 timestamp = 4; // 时间戳
+    string session_uuid = 1; // 会话UUID
+    string payload = 2; // 消息
 }
 
 message MessageDownLink {
-    string session_id = 1; // 会话ID
-    int64 seq_id = 2; // 序列号ID 会话内有序
-    string from_user_id = 3; // 发送者ID
-    string payload = 4; // 消息
-    int64 timestamp = 5; // 时间戳
+    string session_uuid = 1; // 会话UUID
+    string sender_user_uuid = 2; // 发送者UUID
+    string payload = 3; // 消息
+    int64 seq_id = 4; // 序列号ID 会话内有序
 }
 
-message MessageCreateConn{
-    string user_id = 1; // 用户ID
-}
-
-message MessageOpenSessionReq {
-    repeated string with_user_ids = 1; // 用户ID
-}
-
-message MessageOpenSessionResp {
-    string session_id = 1; // 会话ID
-}
-
-message MessageJoinSession {
-    string session_id = 1; // 会话ID
-}
-
-message MessageLeaveSession {
-    string session_id = 1; // 会话ID
+message MessageCreateConn {
+    string token = 1; // 用户token
 }

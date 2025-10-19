@@ -9,9 +9,17 @@ import (
 )
 
 type Config struct {
-	DiscoveryConfig *DiscoveryConfig `env:"IM_DISCOVERY"`
-	IMGatewayConfig *IMGatewayConfig `env:"IM_GATEWAY"`
+	ClientConfig     *ClientConfig     `env:"IM_CLIENT"`
+	DiscoveryConfig  *DiscoveryConfig  `env:"IM_DISCOVERY"`
+	IMGatewayConfig  *IMGatewayConfig  `env:"IM_GATEWAY"`
 	APIGatewayConfig *APIGatewayConfig `env:"IM_API"`
+}
+
+type ClientConfig struct {
+	Mode            string `env:"MODE" default:"dev"`
+	APIGatewayAddr string `env:"API_ADDR" default:"localhost:8088"`
+	IMGatewayAddr string `env:"GATEWAY_ADDR" default:"localhost:8086"`
+	DiscoveryAddr  string `env:"DISCOVERY_ADDR" default:"localhost:8085"`
 }
 
 type IMGatewayConfig struct {
@@ -20,6 +28,7 @@ type IMGatewayConfig struct {
 	RpcAddr           string      `env:"RPC_ADDR" default:"localhost:8087"`
 	RedisConfig       RedisConfig `env:"REDIS"`
 	DiscoveryEndpoint string      `env:"DISCOVERY_ENDPOINT" default:"localhost:8085"`
+	APIGatewayAddr string `env:"API_ADDR" default:"localhost:8088"`
 }
 
 type DiscoveryConfig struct {
@@ -61,6 +70,9 @@ func (conf *Config) GetIMGatewayConfig() *IMGatewayConfig {
 }
 func (conf *Config) GetAPIGatewayConfig() *APIGatewayConfig {
 	return conf.APIGatewayConfig
+}
+func (conf *Config) GetClientConfig() *ClientConfig {
+	return conf.ClientConfig
 }
 
 func Unmarshal(conf any) {

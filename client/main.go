@@ -1,37 +1,97 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"im/client/common"
 	"im/client/page"
-	"im/pkg/plato"
+	"im/pkg/config"
+	apigatewayService "im/server/apigateway/rpc/service"
+	imGatewayService "im/server/imgateway/rpc/service"
 	"image/color"
-	"io"
-	"log"
+	"log/slog"
 	"net"
-	"time"
+	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/theme"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
+// tokenAuth 实现了 credentials.PerRPCCredentials 接口
+type tokenAuth struct {
+	ctx    *common.Context
+	logger *slog.Logger
+}
+
+// GetRequestMetadata 为每个 RPC 请求获取并设置认证元数据
+func (t *tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	t.logger.Debug("GetRequestMetadata", "uri", uri, "token", t.ctx.Token)
+	return map[string]string{
+		"token": t.ctx.Token,
+	}, nil
+}
+
+// RequireTransportSecurity 指明是否需要安全的传输连接
+func (t *tokenAuth) RequireTransportSecurity() bool {
+	return false // 建议为 true 来配合 TLS
+}
+
 func main() {
+	ctx := &common.Context{
+		SessionUserTable:make(map[string]map[string]common.User, 0),
+	}
+	conf := config.NewConf().GetClientConfig()
+
+	level := slog.LevelInfo
+	if conf.Mode == "debug" {
+		level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	}))
+
+	apiGatewayConn, err := grpc.NewClient(conf.APIGatewayAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(&tokenAuth{ctx: ctx, logger: logger}))
+	if err != nil {
+		logger.Error("failed to create client", "error", err)
+		return
+	}
+	apiGatewayClient := apigatewayService.NewAPIGatewayClient(apiGatewayConn)
+
+	imGatewayConn, err := grpc.NewClient(conf.IMGatewayAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Error("failed to create client", "error", err)
+		return
+	}
+	imGatewayClient := imGatewayService.NewIMGatewayClient(imGatewayConn)
+
+	imGatewayLongConn, err := net.Dial("tcp", conf.IMGatewayAddr)
+	if err != nil {
+		logger.Error("failed to dial", "error", err)
+		return
+	}
+	defer imGatewayLongConn.Close()
+
 	a := app.New()
+
 	// 应用自定义主题以隐藏滚动条
 	a.Settings().SetTheme(&customTheme{Theme: theme.DefaultTheme()})
 
-	ctx := &common.Context{
-		App:       a,
-		LoginPage: nil,
-		HomePage:  nil,
-		Account:   "",
-		Password:  "",
-	}
+	ctx.App = a
+	ctx.Ctx = context.Background()
+	ctx.Logger = logger
+	ctx.Config = conf
+	ctx.ApiGatewayClient = apiGatewayClient
+	ctx.IMGatewayClient = imGatewayClient
+	ctx.IMGatewayLongConn = imGatewayLongConn
+	messageReadChan := make(chan common.ChatMessage)
+	messageWriteChan := make(chan common.ChatMessage)
+	ctx.MessageReadChan = messageReadChan
+	ctx.MessageWriteChan = messageWriteChan
+	go common.Read(ctx)
+	go common.Write(ctx)
 	ctx.LoginPage = page.LoginPage(ctx)
-	ctx.HomePage = page.HomePage(ctx)
-
 	ctx.LoginPage.Show()
 	a.Run()
 
@@ -50,113 +110,4 @@ func (ct *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant
 	}
 	// 其他颜色使用默认主题
 	return theme.DefaultTheme().Color(name, variant)
-}
-
-func commandLine() {
-	conn, err := net.Dial("tcp", "localhost:8086")
-	if err != nil {
-		log.Fatalf("failed to dial: %v", err)
-	}
-	defer conn.Close()
-
-	var userId string
-	fmt.Println("请输入用户ID: ")
-	fmt.Scanln(&userId)
-
-	msg, err := proto.Marshal(&plato.MessageCreateConn{
-		UserId: userId,
-	})
-	if err != nil {
-		log.Fatalf("failed to marshal: %v", err)
-	}
-	conn.Write(plato.Marshal(1, plato.MsgTypeCreateConn, nil, msg))
-
-	var withUserId string
-	fmt.Println("你要和谁聊天: ")
-	fmt.Scanln(&withUserId)
-
-	if userId == withUserId {
-		fmt.Println("不能和自己聊天")
-		return
-	}
-	sessionidChan := make(chan string)
-	if withUserId != "" {
-		msg, err := proto.Marshal(&plato.MessageOpenSessionReq{
-			WithUserIds: []string{withUserId},
-		})
-		if err != nil {
-			log.Fatalf("failed to marshal: %v", err)
-		}
-		conn.Write(plato.Marshal(1, plato.MsgTypeOpenSession, nil, msg))
-		go read(conn, sessionidChan)
-		go write(conn, userId, sessionidChan)
-	} else {
-		fmt.Println("等待其他人给你发送消息")
-		go read(conn, sessionidChan)
-	}
-
-	select {}
-
-}
-
-func write(conn net.Conn, userId string, sessionidChan chan string) {
-	sessionid := <-sessionidChan
-	for {
-		var input string
-		fmt.Print("Enter message: ")
-		fmt.Scanln(&input)
-
-		payload := input
-		msg, err := proto.Marshal(&plato.MessageUpLink{
-			SessionId:  sessionid,
-			FromUserId: userId,
-			Payload:    payload,
-			Timestamp:  time.Now().Unix(),
-		})
-		if err != nil {
-			log.Fatalf("failed to marshal: %v", err)
-		}
-
-		data := plato.Marshal(1, plato.MsgTypeMessageUpLink, nil, msg)
-		if _, err := conn.Write(data); err != nil {
-			log.Printf("failed to write: %v", err)
-		}
-	}
-
-}
-
-func read(conn net.Conn, sessionidChan chan string) {
-	for {
-		buf := make([]byte, 10)
-		n, err := conn.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("\nfailed to read: %v\n", err)
-			}
-			break
-		}
-		fixHeader := &plato.FixHeaderProtocol{}
-		if err := fixHeader.Unmarshal(buf[:n]); err != nil {
-			fmt.Printf("\nfailed to unmarshal: %v\n", err)
-			break
-		}
-		content := make([]byte, fixHeader.GetVarHeaderLen()+fixHeader.GetBodyLen())
-		if _, err := conn.Read(content); err != nil {
-			if err != io.EOF {
-				fmt.Printf("\nfailed to read content: %v\n", err)
-				break
-			}
-		}
-		switch fixHeader.GetMsgType() {
-		case plato.MsgTypeMessageDownLink:
-			msg := plato.MessageDownLink{}
-			proto.Unmarshal(content[fixHeader.GetVarHeaderLen():], &msg)
-			fmt.Println("msg:", msg.GetSessionId(), msg.GetFromUserId(), msg.GetPayload(), msg.GetTimestamp())
-		case plato.MsgTypeOpenSession:
-			msg := plato.MessageOpenSessionResp{}
-			proto.Unmarshal(content[fixHeader.GetVarHeaderLen():], &msg)
-			sessionidChan <- msg.GetSessionId()
-			fmt.Println("sessionid:", msg.GetSessionId())
-		}
-	}
 }

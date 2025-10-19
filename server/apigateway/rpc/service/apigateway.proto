@@ -5,9 +5,12 @@ option go_package = "./;service";
 
 service APIGateway {
     rpc SessionList(SessionListRequest) returns (SessionListResponse);
+    rpc GetSessionUserList(GetSessionUserListRequest) returns (GetSessionUserListResponse);
     rpc HistoryMessage(HistoryMessageRequest) returns (HistoryMessageResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
 }
 
 
@@ -20,11 +23,25 @@ message HistoryMessageResponse {
     repeated Message messages = 1; // 消息列表
 }
 
+message GetSessionUserListRequest {
+    string session_uuid = 1; // 会话UUID
+}
+message GetSessionUserListResponse {
+    repeated SessionUserListItem users = 1; // 会话用户UUID列表
+}
+
+message SessionUserListItem {
+    string user_uuid = 1; // 用户UUID
+    string user_name = 2; // 用户名称
+    string user_avatar = 3; // 用户头像
+}
+
+
 message Message{
     string message_uuid = 1; // 消息UUID
     string session_uuid = 2; // 会话UUID
     int64 seq_id = 3; // 消息序列号ID
-    string message_type = 4; // 消息类型
+    int64 message_type = 4; // 消息类型
     string content = 5;     // 消息内容
     string sender_uuid = 6; // 消息发送者UUID
     string sender_name = 7; // 消息发送者名称
@@ -32,9 +49,7 @@ message Message{
     string send_time = 9; // 消息时间
 }
 
-message SessionListRequest {
-    string user_uuid = 1; // 用户UUID
-}
+message SessionListRequest {}
 message SessionListResponse {
     repeated Session sessions = 1; // 会话列表
 }
@@ -66,4 +81,25 @@ message RegisterRequest {
 message RegisterResponse {
     string token = 1; // 令牌
     string refresh_token = 2; // 刷新令牌
+}
+
+message SendMessageRequest {
+    string session_uuid = 1; // 会话UUID
+    string payload = 2; // 消息
+    string sender_uuid = 3; // 消息发送者UUID
+    int64 message_type = 4; // 消息类型
+    int64 seq_id = 5; // 消息序列号ID
+    int64 timestamp = 6; // 消息时间戳
+}
+message SendMessageResponse {
+    string message_uuid = 1; // 消息UUID
+}
+
+message GetUserInfoRequest {}
+message GetUserInfoResponse {
+    string uuid = 1; // 用户UUID
+    string name = 2; // 用户名称
+    string avatar = 3; // 用户头像
+    string email = 4; // 用户邮箱
+    string mobile = 5; // 用户手机号
 }
