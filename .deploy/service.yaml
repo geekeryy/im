@@ -1,0 +1,39 @@
+services:
+  api-gateway:
+    image: centos:7
+    ports:
+      - 8088:8088
+    environment:
+      - IM_API_ADDR=0.0.0.0:8088
+      - IM_API_REDIS_ADDR=redis:6379
+      - IM_API_REDIS_PASSWORD=root
+      - IM_API_REDIS_DB=0
+      - IM_API_MYSQL_ADDR=mysql:3306
+      - IM_API_MYSQL_USERNAME=root
+      - IM_API_MYSQL_PASSWORD=root
+      - IM_API_MYSQL_DB=im
+    volumes:
+      - ./bin:/app
+    working_dir: /app
+    command: ./im apigateway
+  im-gateway:
+    image: centos:7
+    ports:
+      - 8086:8086
+    environment:
+      - IM_GATEWAY_ADDR=0.0.0.0:8086
+      - IM_GATEWAY_RPC_ADDR=0.0.0.0:8087
+      - IM_GATEWAY_API_ADDR=api-gateway:8088
+      - IM_GATEWAY_REDIS_ADDR=redis:6379
+      - IM_GATEWAY_REDIS_PASSWORD=root
+      - IM_GATEWAY_REDIS_DB=0
+      - IM_GATEWAY_MYSQL_ADDR=mysql:3306
+      - IM_GATEWAY_MYSQL_USERNAME=root
+      - IM_GATEWAY_MYSQL_PASSWORD=root
+      - IM_GATEWAY_MYSQL_DB=im
+    volumes:
+      - ./bin:/app
+    working_dir: /app
+    command: ./im imgateway
+    depends_on:
+      - api-gateway

@@ -17,7 +17,7 @@ import (
 
 func LoginPage(ctx *common.Context) fyne.Window {
 	w := ctx.App.NewWindow("欢迎登录")
-	w.Resize(fyne.NewSize(280, 370))
+	w.Resize(fyne.NewSize(300, 370))
 	w.CenterOnScreen()
 
 	// 创建标题

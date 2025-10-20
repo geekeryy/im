@@ -1,4 +1,4 @@
-.PHONY: gen ghz pkg lint model deploy
+.PHONY: gen ghz pkg lint model deploy client
 gen:
 	go generate ./...
 
@@ -16,7 +16,13 @@ pkg:
 
 
 deploy:
+	GOOS=linux GOARCH=arm64 go build -o .deploy/bin/im cmd/main.go
 	docker compose -f .deploy/base.yaml up -d
+	docker compose -f .deploy/service.yaml up -d
+
+
+client:
+	pushd client; go run main.go; popd
 
 # 静态代码检查
 # VSCode: "go.lintFlags": ["--config=./.golangci.yml"] 
