@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"runtime/trace"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -27,8 +29,15 @@ func Run() {
 		Level: level,
 	}))
 
+	fr := trace.NewFlightRecorder(trace.FlightRecorderConfig{
+		MaxBytes: 10 << 20,
+		MinAge:   10 * time.Second,
+	})
+	fr.Start()
+	defer fr.Stop()
+
 	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(grpcmiddreware.MonitorUnaryInterceptor(ctx), grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger)),
+		grpc.ChainUnaryInterceptor(grpcmiddreware.MonitorUnaryInterceptor(ctx,fr,logger), grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger)),
 	)
 
 	service.RegisterDiscoveryServer(server, service.NewDiscoveryService(ctx, logger, conf))

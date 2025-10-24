@@ -9,10 +9,9 @@ import (
 	"im/pkg/jwt"
 	"im/pkg/password"
 	"im/pkg/xcontext"
+	"im/pkg/xstrings"
 	"log"
 	"log/slog"
-	"math/rand"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -225,8 +224,8 @@ func (s *APIGatewayService) Register(ctx context.Context, req *RegisterRequest) 
 	}
 
 	userUuid := uuid.New().String()
-	userName := NewRandomUserName()
-	avatar := NewRandomAvatar()
+	userName := xstrings.NewRandomUserName()
+	avatar := xstrings.NewRandomAvatar()
 	userIdentityNew := &model.UserIdentity{
 		UserUuid:     userUuid,
 		Identifier:   req.Identifier,
@@ -374,29 +373,4 @@ func (s *APIGatewayService) GetUserInfo(ctx context.Context, req *GetUserInfoReq
 		resp.Mobile = userinfo.Mobile
 	}
 	return resp, nil
-}
-
-// 生成随机昵称
-func NewRandomUserName() string {
-	adjectives := []string{"快乐的", "聪明的", "勇敢的", "温柔的", "活泼的", "可爱的", "优雅的", "神秘的", "阳光的", "梦幻的"}
-	nouns := []string{"小猫", "小狗", "小鸟", "小熊", "小兔", "小鱼", "小鹿", "小狐", "小象", "小龙"}
-
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	adjective := adjectives[rand.Intn(len(adjectives))]
-	noun := nouns[rand.Intn(len(nouns))]
-	number := rand.Intn(99)
-	return fmt.Sprintf("%s%s%02d", adjective, noun, number)
-}
-
-// 生成随机头像
-func NewRandomAvatar() string {
-	avatars := []string{
-		"girl1.png",
-		"girl2.png",
-		"boy1.png",
-		"boy2.png",
-	}
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	avatar := avatars[rand.Intn(len(avatars))]
-	return avatar
 }

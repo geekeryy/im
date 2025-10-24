@@ -16,9 +16,9 @@ type Config struct {
 }
 
 type ClientConfig struct {
-	Mode            string `env:"MODE" default:"dev"`
+	Mode           string `env:"MODE" default:"dev"`
 	APIGatewayAddr string `env:"API_ADDR" default:"localhost:8088"`
-	IMGatewayAddr string `env:"GATEWAY_ADDR" default:"localhost:8086"`
+	IMGatewayAddr  string `env:"GATEWAY_ADDR" default:"localhost:8086"`
 	DiscoveryAddr  string `env:"DISCOVERY_ADDR" default:"localhost:8085"`
 }
 
@@ -28,7 +28,7 @@ type IMGatewayConfig struct {
 	RpcAddr           string      `env:"RPC_ADDR" default:"localhost:8087"`
 	RedisConfig       RedisConfig `env:"REDIS"`
 	DiscoveryEndpoint string      `env:"DISCOVERY_ENDPOINT" default:"localhost:8085"`
-	APIGatewayAddr string `env:"API_ADDR" default:"localhost:8088"`
+	APIGatewayAddr    string      `env:"API_ADDR" default:"localhost:8088"`
 }
 
 type DiscoveryConfig struct {

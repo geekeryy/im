@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"im/pkg/xstring"
+	"im/pkg/xstrings"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -63,7 +63,7 @@ func (m *customUserBaseModel) FindByUuid(ctx context.Context, uuid string) (*Use
 
 // 批量查询用户基本信息
 func (m *customUserBaseModel) FindByUuids(ctx context.Context, uuids []string) ([]*UserBase, error) {
-	queryStr, args := xstring.BuildInQuery(uuids)
+	queryStr, args := xstrings.BuildInQuery(uuids)
 	query := fmt.Sprintf("SELECT * FROM %s WHERE uuid in (%s)", m.table, queryStr)
 	var resp []*UserBase
 

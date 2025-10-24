@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"runtime/trace"
+	"time"
 
 	"im/server/apigateway/rpc/service"
 
@@ -28,8 +30,15 @@ func Run() {
 		Level: level,
 	}))
 
+	fr := trace.NewFlightRecorder(trace.FlightRecorderConfig{
+		MaxBytes: 10 << 20,
+		MinAge:   10 * time.Second,
+	})
+	fr.Start()
+	defer fr.Stop()
+
 	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger), grpcmiddreware.JwtUnaryInterceptor(logger)),
+		grpc.ChainUnaryInterceptor(grpcmiddreware.MonitorUnaryInterceptor(ctx,fr,logger), grpcmiddreware.TraceUnaryInterceptor(), grpcmiddreware.LogUnaryInterceptor(logger), grpcmiddreware.JwtUnaryInterceptor(logger)),
 	)
 
 	service.RegisterAPIGatewayServer(server, service.NewAPIGatewayService(ctx, logger, conf))

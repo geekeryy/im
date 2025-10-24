@@ -1,4 +1,4 @@
-package xstring
+package xstrings
 
 import "strings"
 
